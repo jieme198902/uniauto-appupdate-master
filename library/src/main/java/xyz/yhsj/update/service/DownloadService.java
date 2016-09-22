@@ -296,14 +296,12 @@ public class DownloadService extends Service {
             downloadCount += readsize;// 时时获取下载到的大小
 
 
-//            System.out.println(">>>>>>>>>>>>>>>>>>>>" + ((downloadCount * 100.0) / totalSize));
-
-            if (UpdateHelper.getInstance().isDownloadCancle()) {
+            if (UpdateHelper.getInstance().isDownloadCancel()) {
                 if (httpURLConnection != null) {
                     httpURLConnection.disconnect();
                     inputStream.close();
                     outputStream.close();
-                    UpdateHelper.getInstance().setDownloadCancle(false);
+                    UpdateHelper.getInstance().setDownloadCancel(false);
                 }
             }
 
