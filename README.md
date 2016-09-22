@@ -55,8 +55,12 @@ If you add a sample app to the same repo then your app needs to have a dependenc
 
 UpdateHelper.init(this);
         HashMap<String,String> param = new HashMap();
+
         param.put("channelName", ManifestUtils.getMetaData(context,"channel_name");
+
         param.put("packname",ManifestUtils.getPackName());
+
         param.put("oldVersion",ManifestUtils.getVersionCode());
+
         UpdateHelper.getInstance().post("xxxx",param).appKey("xxxxxx").check(this);
 
