@@ -1,4 +1,4 @@
-# android-example
+# uniauto-appupdate
 
 [![Release](https://img.shields.io/github/release/jitpack/android-example.svg?label=Jitpack)](https://jitpack.io/#jitpack/android-example)
 
@@ -50,3 +50,13 @@ If you add a sample app to the same repo then your app needs to have a dependenc
         compile project(':library')
     }
 ```
+
+## add a call method simple
+
+UpdateHelper.init(this);
+        HashMap<String,String> param = new HashMap();
+        param.put("channelName", ManifestUtils.getMetaData(context,"channel_name");
+        param.put("packname",ManifestUtils.getPackName());
+        param.put("oldVersion",ManifestUtils.getVersionCode());
+        UpdateHelper.getInstance().post("xxxx",param).appKey("xxxxxx").check(this);
+

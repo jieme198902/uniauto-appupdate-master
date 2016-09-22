@@ -18,8 +18,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import xyz.yhsj.update.R;
 import xyz.yhsj.update.UpdateHelper;
@@ -27,7 +27,9 @@ import xyz.yhsj.update.bean.UpdateEntity;
 import xyz.yhsj.update.listener.NetCallBack;
 import xyz.yhsj.update.service.DownloadService;
 
-
+/**
+ * 更新代理
+ */
 public class UpdateAgent {
     private static UpdateAgent updater;
     //检查更新的弹窗
@@ -36,9 +38,8 @@ public class UpdateAgent {
     private AlertDialog downDialog;
     //下载进度的广播
     private UpdateProgressBroadcastReceiver broadcastReceiver;
-
     private ProgressBar progressBar;
-    private TextView progresscontent;
+    private TextView progressContent;
 
 
     public static UpdateAgent getInstance() {
@@ -52,12 +53,10 @@ public class UpdateAgent {
     /**
      * 检测更新
      *
-     * @param activity
+     * @param activity 上下文
      */
     public void checkUpdate(final Activity activity) {
-
         if (UpdateHelper.getInstance().getCheckType() == UpdateHelper.CheckType.check_with_Dialog) {
-
             checkDialog = new ProgressDialog(activity);
             checkDialog = new ProgressDialog(activity);
             checkDialog.setMessage("正在检查更新...");
@@ -68,7 +67,9 @@ public class UpdateAgent {
                 return;
             }
         }
+        //获取appKey
         String appKey = UpdateHelper.getInstance().getAppKey();
+        //请求地址
         String url = UpdateHelper.getInstance().getUrl();
         if (TextUtils.isEmpty(url)) {
             throw new RuntimeException("please setUrl before request !!!");
@@ -77,7 +78,7 @@ public class UpdateAgent {
         if (TextUtils.isEmpty(appKey)) {
             throw new RuntimeException("please setAppKey before request !!!");
         }
-        HashMap<String, String> param = UpdateHelper.getInstance().getParams();
+        Map<String, String> param = UpdateHelper.getInstance().getParams();
         param.put("appKey", appKey);
         if (UpdateHelper.getInstance().getHttpMethod() == HttpMetHod.GET) {
             url += (url.indexOf("?") < 0 ? "?" : "&");
@@ -89,17 +90,13 @@ public class UpdateAgent {
                 new NetCallBack() {
                     @Override
                     public void onSuccess(String result) {
-
                         if (checkDialog != null && checkDialog.isShowing()) {
                             checkDialog.dismiss();
                         }
-
                         UpdateEntity updateEntity = UpdateHelper.getInstance().getJsonParser().parse(result);
                         if (updateEntity == null || TextUtils.isEmpty(updateEntity.getUpdateUrl())) {
-
                             //是否仅仅检测
                             if (!UpdateHelper.getInstance().isOnlyCheck()) {
-
                                 if (UpdateHelper.getInstance().getUpdateWithOut() == UpdateHelper.UpdateWithOut.tip_dialog) {
                                     showNoUpdateDialog(activity);
                                 } else if (UpdateHelper.getInstance().getUpdateWithOut() == UpdateHelper.UpdateWithOut.tip_toast) {
@@ -107,31 +104,23 @@ public class UpdateAgent {
                                 } else if (UpdateHelper.getInstance().getUpdateWithOut() == UpdateHelper.UpdateWithOut.tip_without) {
 
                                 }
-
                             }
-
                             //通知前台更新状态
                             if (UpdateHelper.getInstance().getUpdateListener() != null) {
                                 UpdateHelper.getInstance().getUpdateListener().Update(false, null);
                                 //销毁监听器，防止因为单例模式下监听器未消毁导致的异常
                                 UpdateHelper.getInstance().setUpdateListener(false, null);
                             }
-
-
                         } else {
-
                             if (!UpdateHelper.getInstance().isOnlyCheck()) {
                                 showAlertDialog(activity, updateEntity);
                             }
-
-
                             //通知前台更新状态
                             if (UpdateHelper.getInstance().getUpdateListener() != null) {
                                 UpdateHelper.getInstance().getUpdateListener().Update(true, updateEntity);
                                 //销毁监听器，防止因为单例模式下监听器未消毁导致的异常
                                 UpdateHelper.getInstance().setUpdateListener(false, null);
                             }
-
                         }
                     }
 
@@ -154,33 +143,25 @@ public class UpdateAgent {
     /**
      * 信息提示的dialog
      *
-     * @param activity
-     * @param updateEntity
+     * @param activity 上下文
+     * @param updateEntity 请求参数对象
      */
     private void showAlertDialog(final Activity activity, final UpdateEntity updateEntity) {
-
-
         View view = LayoutInflater.from(activity).inflate(R.layout.dialog_result_view, null);
-
         TextView content = (TextView) view.findViewById(R.id.content);
-        Button btn_cancle = (Button) view.findViewById(R.id.btn_cancle);
+        Button btn_cancel = (Button) view.findViewById(R.id.btn_cancle);
         Button btn_update = (Button) view.findViewById(R.id.btn_update);
-
         AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         builder.setCancelable(false);
         builder.setView(view);
-
         content.setText(updateEntity.getContent());
-
         final AlertDialog dialog = builder.show();
-
-        btn_cancle.setOnClickListener(new View.OnClickListener() {
+        btn_cancel.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 dialog.dismiss();
             }
         });
-
         btn_update.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -188,41 +169,33 @@ public class UpdateAgent {
                 downloadApp(activity, updateEntity);
             }
         });
-
     }
 
     /**
      * 信息提示的dialog
      *
-     * @param activity
+     * @param activity 上下文
      */
     private void showNoUpdateDialog(final Activity activity) {
-
-
         View view = LayoutInflater.from(activity).inflate(R.layout.dialog_no_update_view, null);
-
         Button btn_update = (Button) view.findViewById(R.id.btn_update);
-
         AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         builder.setCancelable(false);
         builder.setView(view);
-
         final AlertDialog dialog = builder.show();
-
         btn_update.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 dialog.dismiss();
             }
         });
-
     }
 
     /**
      * 下载APP
      *
-     * @param activity
-     * @param updateEntity
+     * @param activity 上下文
+     * @param updateEntity 更新对象
      */
     private void downloadApp(Activity activity, UpdateEntity updateEntity) {
         //判断服务是否运行，防止重复启动产生错误
@@ -253,30 +226,23 @@ public class UpdateAgent {
     /**
      * 下载时的进度条弹窗
      *
-     * @param activity
+     * @param activity 上下文
      */
     private void downProgressDialog(final Activity activity) {
-
         // 动态注册广播
         IntentFilter filter = new IntentFilter();
         filter.addAction(DownloadService.ACTION_BROADCAST);
         broadcastReceiver = new UpdateProgressBroadcastReceiver();
         activity.registerReceiver(broadcastReceiver, filter);
-
-
         View view = LayoutInflater.from(activity).inflate(R.layout.dialog_update_progress_view, null);
-
-        progresscontent = (TextView) view.findViewById(R.id.content);
-        Button btn_cancle = (Button) view.findViewById(R.id.btn_cancle);
+        progressContent = (TextView) view.findViewById(R.id.content);
+        Button btnCancel = (Button) view.findViewById(R.id.btn_cancle);
         progressBar = (ProgressBar) view.findViewById(R.id.progress);
-
 
         AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         builder.setCancelable(false);
         builder.setView(view);
-
         downDialog = builder.show();
-
         downDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
             @Override
             public void onDismiss(DialogInterface dialogInterface) {
@@ -286,16 +252,13 @@ public class UpdateAgent {
                 }
             }
         });
-
-        btn_cancle.setOnClickListener(new View.OnClickListener() {
+        btnCancel.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 downDialog.dismiss();
-                UpdateHelper.getInstance().setDownloadCancle(true);
+                UpdateHelper.getInstance().setDownloadCancel(true);
             }
         });
-
-
     }
 
     /**
@@ -318,11 +281,8 @@ public class UpdateAgent {
                 //更新弹窗进度
                 progressBar.setMax(intent.getIntExtra(DownloadService.KEY_BROADCAST_TOTAL, 0) / 1000);
                 progressBar.setProgress(intent.getIntExtra(DownloadService.KEY_BROADCAST_COUNT, 0) / 1000);
-
-                progresscontent.setText((formatDouble(intent.getIntExtra(DownloadService.KEY_BROADCAST_COUNT, 0) / 1024.0 / 1024.0)) + "M/" + (formatDouble(intent.getIntExtra(DownloadService.KEY_BROADCAST_TOTAL, 0) / 1024.0 / 1024.0)) + "M");
-
+                progressContent.setText((formatDouble(intent.getIntExtra(DownloadService.KEY_BROADCAST_COUNT, 0) / 1024.0 / 1024.0)) + "M/" + (formatDouble(intent.getIntExtra(DownloadService.KEY_BROADCAST_TOTAL, 0) / 1024.0 / 1024.0)) + "M");
             }
-
             //关闭弹窗
             if (type == DownloadService.DOWN_SUCCESS) {
                 if (downDialog != null) {
@@ -340,7 +300,6 @@ public class UpdateAgent {
     }
 
     private BigDecimal formatDouble(double d) {
-
         BigDecimal bd = new BigDecimal(d);
         return bd.setScale(2, BigDecimal.ROUND_HALF_UP);
     }
@@ -349,24 +308,19 @@ public class UpdateAgent {
     /**
      * 判断某个服务是否正在运行的方法
      *
-     * @param mContext
+     * @param mContext    上下文
      * @param serviceName 是包名+服务的类名（例如：xyz.yhsj.upadte.service.DownloadService）
      * @return true代表正在运行，false代表服务没有正在运行
      */
     public boolean isServiceWork(Context mContext, String serviceName) {
-
         ActivityManager myAM = (ActivityManager) mContext.getSystemService(Context.ACTIVITY_SERVICE);
-
         List<ActivityManager.RunningServiceInfo> myList = myAM.getRunningServices(30);
-
         for (int i = 0; i < myList.size(); i++) {
             String mName = myList.get(i).service.getClassName();
             if (mName.equals(serviceName)) {
                 return true;
-
             }
         }
         return false;
     }
-
 }

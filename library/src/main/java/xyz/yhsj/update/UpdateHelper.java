@@ -5,6 +5,7 @@ import android.content.Context;
 import android.text.TextUtils;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import xyz.yhsj.update.listener.UpdateListener;
 import xyz.yhsj.update.net.HttpMetHod;
@@ -15,11 +16,9 @@ import xyz.yhsj.update.net.UpdateAgent;
  * Created by LOVE on 2016/8/31 031.
  */
 public class UpdateHelper {
-
-
     private Context mContext;
     private String checkUrl;
-    private HashMap<String, String> params;
+    private Map<String, String> params;
     private ParseData jsonParser;
     private boolean showProgressDialog;
 
@@ -28,7 +27,7 @@ public class UpdateHelper {
     //双重嵌套一级是否强制更新
     private boolean updateForce = false;
 
-    private boolean downloadCancle = false;
+    private boolean downloadCancel = false;
 
     private String appKey;
     //联网请求方式
@@ -63,10 +62,11 @@ public class UpdateHelper {
         down_auto_Install,
         down_click_Install
     }
+
     //获取单例对象
     public static UpdateHelper getInstance() {
         if (instance == null) {
-            throw new RuntimeException("UpdateHelper not initialized!");
+            throw new RuntimeException("UpdateHelper not initialized , must call init first !!!");
         } else {
             return instance;
         }
@@ -74,10 +74,11 @@ public class UpdateHelper {
 
     /**
      * 设置appKey
+     *
      * @param appKey
      * @return
      */
-    public UpdateHelper appKey(String appKey){
+    public UpdateHelper appKey(String appKey) {
         this.appKey = appKey;
         return this;
     }
@@ -157,7 +158,7 @@ public class UpdateHelper {
         return checkUrl;
     }
 
-    public HashMap<String, String> getParams() {
+    public Map<String, String> getParams() {
         return params;
     }
 
@@ -189,12 +190,12 @@ public class UpdateHelper {
         return showProgressDialog;
     }
 
-    public boolean isDownloadCancle() {
-        return downloadCancle;
+    public boolean isDownloadCancel() {
+        return downloadCancel;
     }
 
-    public void setDownloadCancle(boolean downloadCancle) {
-        this.downloadCancle = downloadCancle;
+    public void setDownloadCancel(boolean downloadCdownloadCancelancle) {
+        this.downloadCancel = downloadCancel;
     }
 
     public UpdateListener getUpdateListener() {
