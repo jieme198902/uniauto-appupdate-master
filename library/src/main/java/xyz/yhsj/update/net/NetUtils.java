@@ -91,9 +91,20 @@ public class NetUtils {
                         HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
 
                         URL httpUrl = new URL(url);
-                        HttpURLConnection conn = (HttpURLConnection) httpUrl.openConnection();
-                        conn.connect();
-                        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"));
+                        URLConnection urlConnection = null;
+                        switch (method) {
+                            case POST:
+                                urlConnection = httpUrl.openConnection();
+                                urlConnection.setDoOutput(true);
+                                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(urlConnection.getOutputStream(), "utf-8"));
+                                bw.write(paramsStr.toString());
+                                bw.flush();
+                                break;
+                            default:
+                                urlConnection = new URL(url + "?" + paramsStr.toString()).openConnection();
+                                break;
+                        }
+                        BufferedReader br = new BufferedReader(new InputStreamReader(urlConnection.getInputStream(), "utf-8"));
                         String line = null;
                         StringBuffer result = new StringBuffer();
                         while ((line = br.readLine()) != null) {
