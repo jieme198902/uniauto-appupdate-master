@@ -29,6 +29,7 @@ import xyz.yhsj.update.listener.NetCallBack;
 /**
  * 网络请求基类
  * Created by LOVE on 2016/8/31 031.
+ * 2017-01-03王宽，支持https。
  */
 
 public class NetUtils {
