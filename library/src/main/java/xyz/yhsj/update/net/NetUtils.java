@@ -1,17 +1,28 @@
 package xyz.yhsj.update.net;
 
 import android.os.AsyncTask;
+import android.util.Log;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import xyz.yhsj.update.listener.NetCallBack;
 
@@ -52,29 +63,72 @@ public class NetUtils {
                 for (String s : set) {
                     paramsStr.append(s).append("=").append(params.get(s)).append("&");
                 }
-                try {
-                    URLConnection uc;
-                    switch (method) {
-                        case POST:
-                            uc = new URL(url).openConnection();
-                            uc.setDoOutput(true);
-                            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(uc.getOutputStream(), "utf-8"));
-                            bw.write(paramsStr.toString());
-                            bw.flush();
-                            break;
-                        default:
-                            uc = new URL(url + "?" + paramsStr.toString()).openConnection();
-                            break;
+
+                if (url.startsWith("https://")) {
+                    // Create a trust manager that does not validate certificate chains
+                    TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
+                        public X509Certificate[] getAcceptedIssuers() {
+                            return null;
+                        }
+
+                        public void checkClientTrusted(X509Certificate[] certs, String authType) {
+                        }
+
+                        public void checkServerTrusted(X509Certificate[] certs, String authType) {
+                        }
+                    }};
+                    // Install the all-trusting trust manager
+                    try {// 注意这部分一定要
+                        HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
+                            @Override
+                            public boolean verify(String hostname, SSLSession sslSession) {
+                                Log.i("NetUtils", "Approving certificate for " + hostname);
+                                return true;
+                            }
+                        });
+                        SSLContext sc = SSLContext.getInstance("TLS");
+                        sc.init(null, trustAllCerts, new SecureRandom());
+                        HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+
+                        URL httpUrl = new URL(url);
+                        HttpURLConnection conn = (HttpURLConnection) httpUrl.openConnection();
+                        conn.connect();
+                        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"));
+                        String line = null;
+                        StringBuffer result = new StringBuffer();
+                        while ((line = br.readLine()) != null) {
+                            result.append(line);
+                        }
+                        return result.toString();
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
-                    BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream(), "utf-8"));
-                    String line = null;
-                    StringBuffer result = new StringBuffer();
-                    while ((line = br.readLine()) != null) {
-                        result.append(line);
+                } else {
+                    try {
+                        URLConnection uc;
+                        switch (method) {
+                            case POST:
+                                uc = new URL(url).openConnection();
+                                uc.setDoOutput(true);
+                                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(uc.getOutputStream(), "utf-8"));
+                                bw.write(paramsStr.toString());
+                                bw.flush();
+                                break;
+                            default:
+                                uc = new URL(url + "?" + paramsStr.toString()).openConnection();
+                                break;
+                        }
+                        BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream(), "utf-8"));
+                        String line = null;
+                        StringBuffer result = new StringBuffer();
+                        while ((line = br.readLine()) != null) {
+                            result.append(line);
+                        }
+                        return result.toString();
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
-                    return result.toString();
-                } catch (IOException e) {
-                    e.printStackTrace();
                 }
                 return null;
             }
