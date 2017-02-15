@@ -66,7 +66,7 @@ public class UpdateHelper {
     //获取单例对象
     public static UpdateHelper getInstance() {
         if (instance == null) {
-            throw new RuntimeException("UpdateHelper not initialized , must call init first !!!");
+            throw new RuntimeException("UpdateHelper not initialized , must call init first in application onCreate !!!");
         } else {
             return instance;
         }
