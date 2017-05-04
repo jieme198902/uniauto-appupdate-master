@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<paths>
-    <external-path
-        name="UpdateApp"
-        path="UpdateApp" />
-</paths>
+<resources>
+    <paths>
+        <root-path
+            name="apk_location"
+            path="" />
+    </paths>
+</resources>

@@ -197,7 +197,7 @@ public class DownloadService extends Service {
         //7.0以上
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             //provider authorities
-            Uri apkUri = FileProvider.getUriForFile(this, "me.uniauto.fileprovider", file);
+            Uri apkUri = FileProvider.getUriForFile(this, this.getPackageName() + ".fileprovider", file);
             //Granting Temporary Permissions to a URI
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
