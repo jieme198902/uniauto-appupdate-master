@@ -2,19 +2,21 @@ package xyz.yhsj.update.service;
 
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.ProgressDialog;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Vibrator;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.content.FileProvider;
 import android.text.TextUtils;
 import android.widget.Toast;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -33,7 +35,6 @@ import xyz.yhsj.update.utils.FileUtil;
  */
 public class DownloadService extends Service {
 
-    public static final String Install_Apk = "Install_Apk";
 
     //下载进度步进
     private static final int down_step_custom = 3;
@@ -187,12 +188,22 @@ public class DownloadService extends Service {
 
     private void installApk() {
         /*********下载完成，点击安装***********/
-        Uri uri = Uri.fromFile(FileUtil.updateFile);
+        File file = FileUtil.updateFile;
+        Uri uri = Uri.fromFile(file);
         Intent intent = new Intent(Intent.ACTION_VIEW);
 
         /**********加这个属性是因为使用Context的startActivity方法的话，就需要开启一个新的task**********/
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        intent.setDataAndType(uri, "application/vnd.android.package-archive");
+        //7.0以上
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            //provider authorities
+            Uri apkUri = FileProvider.getUriForFile(this, "me.uniauto.fileprovider", file);
+            //Granting Temporary Permissions to a URI
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+        } else {
+            intent.setDataAndType(uri, "application/vnd.android.package-archive");
+        }
         startActivity(intent);
     }
 
