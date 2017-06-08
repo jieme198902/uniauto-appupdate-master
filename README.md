@@ -48,7 +48,8 @@ If you add a sample app to the same repo then your app needs to have a dependenc
 #初始化
 UpdateHelper.init(this);
 //具体使用的时候
- /**
+ 
+    /**
      * 检测新版本。
      */
     private void checkVersionInfo() {
@@ -109,4 +110,3 @@ UpdateHelper.init(this);
                 })
                 .check(this);
     }
-
