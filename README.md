@@ -45,15 +45,68 @@ If you add a sample app to the same repo then your app needs to have a dependenc
 ```
 
 ## add a call method simple
-
+#初始化
 UpdateHelper.init(this);
-        HashMap<String,String> param = new HashMap();
+//具体使用的时候
+ /**
+     * 检测新版本。
+     */
+    private void checkVersionInfo() {
+        //这里即请求版本信息,也更新
+        HashMap<String, String> param = new HashMap<>();
+        param.put("oldVersion", ManifestUtils.getVersionCode(this));
+        String channelName = "web";
+        try {
+            Bundle bundle = getPackageManager()
+                    .getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA).metaData;
+            if (null != bundle && !TextUtils.isEmpty(bundle.getString("UMENG_CHANNEL"))) {
+                channelName = bundle.getString("UMENG_CHANNEL");
+            }
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
+        param.put("channelName", channelName);
+        param.put("packname", ManifestUtils.getPackName(this));
+        UpdateHelper.getInstance().appKey("5fb9c5849535c13917c2cf9baaece6ef9693ef27")
+                .post(Constants.checkVersion, param)
+                .setJsonParser(new CwlJsonParser(MainActivity.this))
+                //             这个true是否往下走,进行版本更新
+                .setUpdateListener(false, new UpdateListener() {
+                    //                  update 这里放的是否有新版本
+                    @Override
+                    public void Update(boolean update, UpdateEntity updateEntity) {
+                        if (update) {
+                            show_version_text.setText("发现新版本");
+                            RxPermissions.getInstance(MainActivity.this)
+                                    .request(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                                    .subscribe(new Action1<Boolean>() {
+                                        @Override
+                                        public void call(Boolean aBoolean) {
+                                            if (aBoolean) {
 
-        param.put("channelName", ManifestUtils.getMetaData(context,"channel_name");
-
-        param.put("packname",ManifestUtils.getPackName());
-
-        param.put("oldVersion",ManifestUtils.getVersionCode());
-
-        UpdateHelper.getInstance().post("xxxx",param).appKey("xxxxxx").check(this);
+                                            } else {
+                                                new AlertDialog.Builder(MainActivity.this)
+                                                        .setTitle("提示")
+                                                        .setMessage("app需要开启写存储的权限才能使用此功能")
+                                                        .setPositiveButton("设置", new DialogInterface.OnClickListener() {
+                                                            @Override
+                                                            public void onClick(DialogInterface dialogInterface, int i) {
+                                                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                                                intent.setData(Uri.parse("package:" + MainActivity.this.getPackageName()));
+                                                                MainActivity.this.startActivity(intent);
+                                                            }
+                                                        })
+                                                        .setNegativeButton("取消", null)
+                                                        .create()
+                                                        .show();
+                                            }
+                                        }
+                                    });
+                        } else {
+                            show_version_text.setText("已是最新版本");
+                        }
+                    }
+                })
+                .check(this);
+    }
 
