@@ -43,12 +43,12 @@ If you add a sample app to the same repo then your app needs to have a dependenc
         compile project(':library')
     }
 ```
-
-## add a call method simple
 #初始化
+```java
 UpdateHelper.init(this);
-//具体使用的时候
- 
+```
+#####具体代码中使用的时候
+```java
     /**
      * 检测新版本。
      */
@@ -84,7 +84,6 @@ UpdateHelper.init(this);
                                         @Override
                                         public void call(Boolean aBoolean) {
                                             if (aBoolean) {
-
                                             } else {
                                                 new AlertDialog.Builder(MainActivity.this)
                                                         .setTitle("提示")
@@ -110,3 +109,4 @@ UpdateHelper.init(this);
                 })
                 .check(this);
     }
+```
