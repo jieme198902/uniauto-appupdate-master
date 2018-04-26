@@ -11,6 +11,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Vibrator;
+import android.provider.Settings;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.FileProvider;
 import android.text.TextUtils;
@@ -186,25 +187,44 @@ public class DownloadService extends Service {
         }
     };
 
+    /**
+     * 安卓8.0做适配
+     */
     private void installApk() {
         /*********下载完成，点击安装***********/
         File file = FileUtil.updateFile;
-        Uri uri = Uri.fromFile(file);
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-
-        /**********加这个属性是因为使用Context的startActivity方法的话，就需要开启一个新的task**********/
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        //7.0以上
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            //provider authorities
-            Uri apkUri = FileProvider.getUriForFile(this, this.getPackageName() + ".fileprovider", file);
-            //Granting Temporary Permissions to a URI
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
-        } else {
-            intent.setDataAndType(uri, "application/vnd.android.package-archive");
+        // 安卓8.0做适配
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+            boolean b = getPackageManager().canRequestPackageInstalls();
+            if (b) {
+                installApkNormal(file);
+            } else {
+                //请求安装未知应用来源的权限
+                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES));
+            }
+        }else{
+            installApkNormal(file);
         }
-        startActivity(intent);
+    }
+
+    /**
+     * 安卓7.0做适配
+     * @param apkFile
+     */
+    private void installApkNormal(File apkFile) {
+        if (Build.VERSION.SDK_INT >= 24) {//判读版本是否在7.0以上
+            Uri apkUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", apkFile);//在AndroidManifest中的android:authorities值
+            Intent install = new Intent(Intent.ACTION_VIEW);
+            install.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            install.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            startActivity(install);
+        } else {
+            Intent install = new Intent(Intent.ACTION_VIEW);
+            install.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive");
+            install.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(install);
+        }
     }
 
     /**
