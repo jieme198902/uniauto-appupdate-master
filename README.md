@@ -16,15 +16,17 @@ dependencies {
 }
 ```
 
-## Multiple build variants
-
-If your library uses multiple flavours then see this example:
-
-## 初始化
+## 在Application中初始化
 ```java
-UpdateHelper.init(this);
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        UpdateHelper.init(this);
+    }
 ```
-### 具体代码中使用的时候
+UpdateHelper.init(this);
+### 具体使用代码的时候
+UpdateHelper.init(this);
 ```java
     /**
      * 检测新版本。
@@ -62,15 +64,15 @@ UpdateHelper.init(this);
                                         public void call(Boolean aBoolean) {
                                             if (aBoolean) {
                                             } else {
-                                                new AlertDialog.Builder(MainActivity.this)
+                                                new AlertDialog.Builder(context)
                                                         .setTitle("提示")
                                                         .setMessage("app需要开启写存储的权限才能使用此功能")
                                                         .setPositiveButton("设置", new DialogInterface.OnClickListener() {
                                                             @Override
                                                             public void onClick(DialogInterface dialogInterface, int i) {
-                                                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                                                intent.setData(Uri.parse("package:" + MainActivity.this.getPackageName()));
-                                                                MainActivity.this.startActivity(intent);
+                                                               Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                                               intent.setData(Uri.parse("package:" + getPackageName()));
+                                                               startActivity(intent);
                                                             }
                                                         })
                                                         .setNegativeButton("取消", null)
