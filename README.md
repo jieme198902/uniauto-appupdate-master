@@ -20,34 +20,11 @@ dependencies {
 
 If your library uses multiple flavours then see this example:
 
-
-## Adding the maven plugin
-
-To enable installing into local maven repository and JitPack you need to add the [android-maven](https://github.com/dcendents/android-maven-gradle-plugin) plugin:
-
-1. Add `classpath 'com.github.dcendents:android-maven-gradle-plugin:1.3'` to root build.gradle under `buildscript { dependencies {`
-2. Add `com.github.dcendents.android-maven` to the library/build.gradle
-
-After these changes you should be able to run:
-
-    ./gradlew install
-    
-from the root of your project. If install works and you have added a GitHub release it should work on jitpack.io
-
-## Adding a sample app 
-
-If you add a sample app to the same repo then your app needs to have a dependency on the library. To do this in your app/build.gradle add:
-
-```gradle
-    dependencies {
-        compile project(':library')
-    }
-```
-#初始化
+## 初始化
 ```java
 UpdateHelper.init(this);
 ```
-#####具体代码中使用的时候
+### 具体代码中使用的时候
 ```java
     /**
      * 检测新版本。
@@ -68,7 +45,7 @@ UpdateHelper.init(this);
         }
         param.put("channelName", channelName);
         param.put("packname", ManifestUtils.getPackName(this));
-        UpdateHelper.getInstance().appKey("5fb9c5849535c13917c2cf9baaece6ef9693ef27")
+        UpdateHelper.getInstance().appKey("5279c5849535c13917c227927272762796932727")
                 .post(Constants.checkVersion, param)
                 .setJsonParser(new CwlJsonParser(MainActivity.this))
                 //             这个true是否往下走,进行版本更新
