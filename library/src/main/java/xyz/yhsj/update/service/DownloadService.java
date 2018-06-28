@@ -12,6 +12,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Vibrator;
 import android.provider.Settings;
+import android.support.annotation.RequiresApi;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.FileProvider;
 import android.text.TextUtils;
@@ -194,21 +195,34 @@ public class DownloadService extends Service {
         /*********下载完成，点击安装***********/
         File file = FileUtil.updateFile;
         // 安卓8.0做适配
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             boolean b = getPackageManager().canRequestPackageInstalls();
             if (b) {
                 installApkNormal(file);
             } else {
+                startInstallPermissionSettingActivity();
                 //请求安装未知应用来源的权限
-                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES));
+//                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES));
             }
-        }else{
+        } else {
             installApkNormal(file);
         }
     }
 
     /**
+     * 跳转到设置-允许安装未知来源-页面
+     */
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void startInstallPermissionSettingActivity() {
+        //注意这个是8.0新API
+        Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+    }
+
+    /**
      * 安卓7.0做适配
+     *
      * @param apkFile
      */
     private void installApkNormal(File apkFile) {
