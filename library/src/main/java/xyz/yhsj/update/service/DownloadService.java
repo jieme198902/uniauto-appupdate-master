@@ -200,6 +200,7 @@ public class DownloadService extends Service {
             if (b) {
                 installApkNormal(file);
             } else {
+                Toast.makeText(this,"请求安装未知应用来源的权限",Toast.LENGTH_SHORT).show();
                 startInstallPermissionSettingActivity();
                 //请求安装未知应用来源的权限
 //                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES));
