@@ -16,38 +16,17 @@ dependencies {
 }
 ```
 
-## Multiple build variants
-
-If your library uses multiple flavours then see this example:
-
-
-## Adding the maven plugin
-
-To enable installing into local maven repository and JitPack you need to add the [android-maven](https://github.com/dcendents/android-maven-gradle-plugin) plugin:
-
-1. Add `classpath 'com.github.dcendents:android-maven-gradle-plugin:1.3'` to root build.gradle under `buildscript { dependencies {`
-2. Add `com.github.dcendents.android-maven` to the library/build.gradle
-
-After these changes you should be able to run:
-
-    ./gradlew install
-    
-from the root of your project. If install works and you have added a GitHub release it should work on jitpack.io
-
-## Adding a sample app 
-
-If you add a sample app to the same repo then your app needs to have a dependency on the library. To do this in your app/build.gradle add:
-
-```gradle
-    dependencies {
-        compile project(':library')
+## 在Application中初始化
+```java
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        UpdateHelper.init(this);
     }
 ```
-#初始化
-```java
 UpdateHelper.init(this);
-```
-#####具体代码中使用的时候
+### 具体使用代码的时候
+UpdateHelper.init(this);
 ```java
     /**
      * 检测新版本。
@@ -68,7 +47,7 @@ UpdateHelper.init(this);
         }
         param.put("channelName", channelName);
         param.put("packname", ManifestUtils.getPackName(this));
-        UpdateHelper.getInstance().appKey("5fb9c5849535c13917c2cf9baaece6ef9693ef27")
+        UpdateHelper.getInstance().appKey("5279c5849535c13917c227927272762796932727")
                 .post(Constants.checkVersion, param)
                 .setJsonParser(new CwlJsonParser(MainActivity.this))
                 //             这个true是否往下走,进行版本更新
@@ -85,15 +64,15 @@ UpdateHelper.init(this);
                                         public void call(Boolean aBoolean) {
                                             if (aBoolean) {
                                             } else {
-                                                new AlertDialog.Builder(MainActivity.this)
+                                                new AlertDialog.Builder(context)
                                                         .setTitle("提示")
                                                         .setMessage("app需要开启写存储的权限才能使用此功能")
                                                         .setPositiveButton("设置", new DialogInterface.OnClickListener() {
                                                             @Override
                                                             public void onClick(DialogInterface dialogInterface, int i) {
-                                                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                                                intent.setData(Uri.parse("package:" + MainActivity.this.getPackageName()));
-                                                                MainActivity.this.startActivity(intent);
+                                                               Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                                               intent.setData(Uri.parse("package:" + getPackageName()));
+                                                               startActivity(intent);
                                                             }
                                                         })
                                                         .setNegativeButton("取消", null)
