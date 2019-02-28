@@ -1,25 +1,20 @@
 package xyz.yhsj.update.service;
 
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Vibrator;
-import android.provider.Settings;
-import android.support.annotation.RequiresApi;
-import android.support.v4.content.FileProvider;
 import android.text.TextUtils;
 import android.widget.Toast;
 
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -45,17 +40,18 @@ public class DownloadService extends Service {
     private static final int TIMEOUT = 10 * 1000;
     //handler状态
     public static final int DOWN_SUCCESS = 0;
-    public static final int DOWN_LOADING = 1;
     public static final int DOWN_ERROR = -1;
+    //广播-发送没有安装权限的代码
+    public static final int NO_INSTALL_PERMISSION = 2;
+    //广播-安装应用
+    public static final int INSTALL = 3;
     //通知
     private NotificationManager mNotificationManager1 = null;
     private Notification.Builder builder;
     private NotificationChannel channel;
-    private final int NotificationID = 0x10000;
+    private int notificationID = 111;
     //app名称
     private String app_name;
-    //自动安装
-    private boolean auto_Install;
     //appUrl
     private static String down_url;
     //参数
@@ -72,12 +68,6 @@ public class DownloadService extends Service {
     private final Intent broadcast_intent = new Intent(ACTION_BROADCAST);
     //消息类型
     public static final String KEY_BROADCAST_TYPE = "Key_Broadcast_Type";
-    //总长度
-    public static final String KEY_BROADCAST_TOTAL = "Key_Broadcast_Total";
-    //下载的长度
-    public static final String KEY_BROADCAST_COUNT = "Key_Broadcast_Count";
-    //百分比
-    public static final String KEY_BROADCAST_PERCENT = "Key_Broadcast_Percent";
 
 
     @Override
@@ -95,24 +85,14 @@ public class DownloadService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
-
         if (intent != null) {
             app_name = intent.getStringExtra(KEY_APP_NAME);
             down_url = intent.getStringExtra(KEY_DOWN_URL);
-            auto_Install = intent.getBooleanExtra(KEY_AUTO_INSTALL, false);
         }
-
         // create file,应该在这个地方加一个返回值的判断SD卡是否准备好，文件是否创建成功，等等！
-        FileUtil.createFile(app_name);
-
-        if (FileUtil.isCreateFileSucess == true && !TextUtils.isEmpty(down_url)) {
+        if (true == FileUtil.createFile(app_name) && !TextUtils.isEmpty(down_url)) {
             createNotification();
-
             createThread();
-        } else {
-            Toast.makeText(this, "下载失败", Toast.LENGTH_SHORT).show();
-            /***************stop service************/
-            stopSelf();
         }
 
         return super.onStartCommand(intent, flags, startId);
@@ -122,131 +102,60 @@ public class DownloadService extends Service {
     /*********
      * update UI
      ******/
+    @SuppressLint("HandlerLeak")
     private final Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case DOWN_SUCCESS:
-
                     // 震动提示
-                    try {
-                        Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-                        vibrator.vibrate(500L);// 参数是震动时间(long类型)
-                    } catch (Exception e) {
+                    Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                    // 参数是震动时间(long类型)
+                    vibrator.vibrate(500L);
 
-                    }
-
-                    if (auto_Install) {
-                        /*****安装APK******/
-                        installApk();
-                        mNotificationManager1.cancel(NotificationID);
-                    } else {
-                        /*********下载完成，点击安装***********/
-                        Uri uri = Uri.fromFile(FileUtil.updateFile);
-                        Intent intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setDataAndType(uri, "application/vnd.android.package-archive");
-                        PendingIntent pendingIntent = PendingIntent.getActivity(DownloadService.this, 0, intent, 0);
-                        builder.setAutoCancel(true);
-                        builder.setContentIntent(pendingIntent);
-                        builder.setContentText("下载完成，点击安装");
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                            mNotificationManager1.notify(NotificationID, builder.build());
-                        }else{
-                            mNotificationManager1.notify(NotificationID,builder.getNotification());
+                    //检测8.0是否有安装应用的权限
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        boolean installAllowed = getPackageManager().canRequestPackageInstalls();
+                        //有权限
+                        if (installAllowed) {
+                            //广播安装
+                            sendInstallBroadcast(DownloadService.this);
+                        } else {
+                            //广播申请权限
+                            broadcast_intent.putExtra(KEY_BROADCAST_TYPE, NO_INSTALL_PERMISSION);
+                            sendBroadcast(broadcast_intent);
                         }
-
-                        Toast.makeText(DownloadService.this, "下载完成，下拉通知栏，点击安装", Toast.LENGTH_LONG).show();
-
+                    } else {
+                        sendInstallBroadcast(DownloadService.this);
                     }
-
-
-                    //广播
-                    broadcast_intent.putExtra(KEY_BROADCAST_TYPE, DOWN_SUCCESS);
-                    sendBroadcast(broadcast_intent);
-
-                    /***stop service*****/
-                    stopSelf();
+                    mNotificationManager1.cancel(notificationID);
                     break;
-
                 case DOWN_ERROR:
-
                     //广播
                     broadcast_intent.putExtra(KEY_BROADCAST_TYPE, DOWN_ERROR);
                     sendBroadcast(broadcast_intent);
-
                     builder.setAutoCancel(true);
-
                     Toast.makeText(DownloadService.this, "下载停止", Toast.LENGTH_SHORT).show();
-
-                    mNotificationManager1.cancel(NotificationID);
-
+                    mNotificationManager1.cancel(notificationID);
                     /***stop service*****/
                     stopSelf();
                     break;
 
                 default:
-                    //stopService(updateIntent);
-                    /******Stop service******/
-                    //stopService(intentname)
-                    //stopSelf();
+
                     break;
             }
         }
     };
 
     /**
-     * 安卓8.0做适配
+     * 安装应用的通知
+     * @param context
      */
-    private void installApk() {
-        /*********下载完成，点击安装***********/
-        File file = FileUtil.updateFile;
-        // 安卓8.0做适配
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            boolean b = getPackageManager().canRequestPackageInstalls();
-            if (b) {
-                installApkNormal(file);
-            } else {
-                Toast.makeText(this, "请求安装未知应用来源的权限", Toast.LENGTH_SHORT).show();
-                startInstallPermissionSettingActivity();
-                //请求安装未知应用来源的权限
-//                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES));
-            }
-        } else {
-            installApkNormal(file);
-        }
-    }
-
-    /**
-     * 跳转到设置-允许安装未知来源-页面
-     */
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    private void startInstallPermissionSettingActivity() {
-        //注意这个是8.0新API
-        Uri packageURI = Uri.parse("package:" + getPackageName());
-        Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, packageURI);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(intent);
-    }
-
-    /**
-     * 安卓7.0做适配
-     *
-     * @param apkFile
-     */
-    private void installApkNormal(File apkFile) {
-        if (Build.VERSION.SDK_INT >= 24) {//判读版本是否在7.0以上
-            Uri apkUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", apkFile);//在AndroidManifest中的android:authorities值
-            Intent install = new Intent(Intent.ACTION_VIEW);
-            install.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            install.setDataAndType(apkUri, "application/vnd.android.package-archive");
-            startActivity(install);
-        } else {
-            Intent install = new Intent(Intent.ACTION_VIEW);
-            install.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive");
-            install.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(install);
-        }
+    public static void sendInstallBroadcast(Context context) {
+        Intent broadcast_intent = new Intent(ACTION_BROADCAST);
+        broadcast_intent.putExtra(KEY_BROADCAST_TYPE, INSTALL);
+        context.sendBroadcast(broadcast_intent);
     }
 
     /**
@@ -263,16 +172,11 @@ public class DownloadService extends Service {
     private class DownLoadThread extends Thread {
         @Override
         public void run() {
-            Message message = new Message();
             try {
-                long downloadSize = downloadUpdateFile(down_url, FileUtil.updateFile.toString());
-                if (downloadSize > 0) {
-                    // down success
-                    message.what = DOWN_SUCCESS;
-                    handler.sendMessage(message);
-                }
+                downloadUpdateFile(down_url, FileUtil.updateFile.toString());
             } catch (Exception e) {
                 e.printStackTrace();
+                Message message = new Message();
                 message.what = DOWN_ERROR;
                 handler.sendMessage(message);
             }
@@ -288,7 +192,6 @@ public class DownloadService extends Service {
      * @see DownloadService
      */
     public void createNotification() {
-
         mNotificationManager1 = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         builder = new Notification.Builder(getApplicationContext());
         builder.setSmallIcon(R.drawable.ic_launcher);
@@ -303,9 +206,9 @@ public class DownloadService extends Service {
             builder.setChannelId("appupdate");
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            mNotificationManager1.notify(NotificationID, builder.build());
-        }else{
-            mNotificationManager1.notify(NotificationID,builder.getNotification());
+            mNotificationManager1.notify(notificationID, builder.build());
+        } else {
+            mNotificationManager1.notify(notificationID, builder.getNotification());
         }
     }
 
@@ -316,7 +219,6 @@ public class DownloadService extends Service {
      * @throws
      */
     public long downloadUpdateFile(String down_url, String file) throws Exception {
-
         int down_step = down_step_custom;// 提示step
         int totalSize;// 文件总大小
         int downloadCount = 0;// 已经下载好的大小
@@ -332,12 +234,6 @@ public class DownloadService extends Service {
         // 获取下载文件的size
         totalSize = httpURLConnection.getContentLength();
 
-        if (httpURLConnection.getResponseCode() == 404) {
-            throw new Exception("fail!");
-            //这个地方应该加一个下载失败的处理，但是，因为我们在外面加了一个try---catch，已经处理了Exception,
-            //所以不用处理
-        }
-
         inputStream = httpURLConnection.getInputStream();
         outputStream = new FileOutputStream(file, false);// 文件存在则覆盖掉
 
@@ -346,17 +242,8 @@ public class DownloadService extends Service {
 
         while ((readsize = inputStream.read(buffer)) != -1) {
 
-//          /*********如果下载过程中出现错误，就弹出错误提示，并且把notificationManager取消*********/
-//          if (httpURLConnection.getResponseCode() == 404) {
-//              notificationManager.cancel(R.layout.notification_item);
-//              throw new Exception("fail!");
-//              //这个地方应该加一个下载失败的处理，但是，因为我们在外面加了一个try---catch，已经处理了Exception,
-//              //所以不用处理
-//          }
-
             outputStream.write(buffer, 0, readsize);
             downloadCount += readsize;// 时时获取下载到的大小
-
 
             if (UpdateHelper.getInstance().isDownloadCancel()) {
                 if (httpURLConnection != null) {
@@ -376,38 +263,23 @@ public class DownloadService extends Service {
                 builder.setProgress(totalSize, downloadCount, false);
                 builder.setContentInfo(getPercent(downloadCount, totalSize));
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                    mNotificationManager1.notify(NotificationID, builder.build());
-                }else{
-                    mNotificationManager1.notify(NotificationID,builder.getNotification());
+                    mNotificationManager1.notify(notificationID, builder.build());
+                } else {
+                    mNotificationManager1.notify(notificationID, builder.getNotification());
                 }
-
-                //广播
-                broadcast_intent.putExtra(KEY_BROADCAST_TOTAL, totalSize);
-                broadcast_intent.putExtra(KEY_BROADCAST_COUNT, downloadCount);
-                broadcast_intent.putExtra(KEY_BROADCAST_PERCENT, getPercent(downloadCount, totalSize));
-                broadcast_intent.putExtra(KEY_BROADCAST_TYPE, DOWN_LOADING);
-                sendBroadcast(broadcast_intent);
-
             }
-
+            //下载完了
             if (downloadCount == totalSize) {
-
-                System.out.println(">>>>>>>>>>>>>" + getPercent(downloadCount, totalSize));
-
                 builder.setProgress(totalSize, downloadCount, false);
                 builder.setContentInfo(getPercent(downloadCount, totalSize));
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                    mNotificationManager1.notify(NotificationID, builder.build());
-                }else{
-                    mNotificationManager1.notify(NotificationID,builder.getNotification());
+                    mNotificationManager1.notify(notificationID, builder.build());
+                } else {
+                    mNotificationManager1.notify(notificationID, builder.getNotification());
                 }
-
-                //广播
-                broadcast_intent.putExtra(KEY_BROADCAST_TOTAL, totalSize);
-                broadcast_intent.putExtra(KEY_BROADCAST_COUNT, downloadCount);
-                broadcast_intent.putExtra(KEY_BROADCAST_PERCENT, getPercent(downloadCount, totalSize));
-                broadcast_intent.putExtra(KEY_BROADCAST_TYPE, DOWN_LOADING);
-                sendBroadcast(broadcast_intent);
+                Message message = new Message();
+                message.what = DOWN_SUCCESS;
+                handler.sendMessage(message);
             }
         }
 
@@ -436,5 +308,4 @@ public class DownloadService extends Service {
         result = df1.format(tempresult);
         return result;
     }
-
 }

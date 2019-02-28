@@ -7,7 +7,7 @@ import java.io.IOException;
 
 /**
  * 类描述：FileUtil
- *
+ * <p>
  * Created by LOVE on 2016/8/31 031.
  */
 public class FileUtil {
@@ -19,8 +19,6 @@ public class FileUtil {
      ***********/
     public static final String KonkaApplication = "UpdateApp";
 
-    public static boolean isCreateFileSucess;
-
     /**
      * 方法描述：createFile方法
      *
@@ -28,10 +26,10 @@ public class FileUtil {
      * @return
      * @see FileUtil
      */
-    public static void createFile(String app_name) {
-
+    public static boolean createFile(String app_name) {
+        boolean isCreateFileSuccess;
         if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
-            isCreateFileSucess = true;
+            isCreateFileSuccess = true;
 
             updateDir = new File(Environment.getExternalStorageDirectory() + "/" + KonkaApplication + "/");
             updateFile = new File(updateDir + "/" + app_name + ".apk");
@@ -43,13 +41,14 @@ public class FileUtil {
                 try {
                     updateFile.createNewFile();
                 } catch (IOException e) {
-                    isCreateFileSucess = false;
+                    isCreateFileSuccess = false;
                     e.printStackTrace();
                 }
             }
 
         } else {
-            isCreateFileSucess = false;
+            isCreateFileSuccess = false;
         }
+        return isCreateFileSuccess;
     }
 }

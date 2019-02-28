@@ -20,7 +20,6 @@ public class UpdateHelper {
     private String checkUrl;
     private Map<String, String> params;
     private ParseData jsonParser;
-    private boolean showProgressDialog;
 
     private static UpdateHelper instance;
 
@@ -33,35 +32,11 @@ public class UpdateHelper {
     //联网请求方式
     private HttpMetHod httpMetHod = HttpMetHod.GET;
 
-    //默认需要检测更新
-    private CheckType checkType = CheckType.check_no_Dialog;
-    private DownType downType = DownType.down_auto_Install;
-    private UpdateWithOut updateWithOut = UpdateWithOut.tip_without;
-
     //辅助获取检测结果的回调
     private UpdateListener updateListener;
 
     private boolean onlyCheck;
 
-
-    //检测更新类型
-    public enum CheckType {
-        check_with_Dialog,
-        check_no_Dialog
-    }
-
-    //无更新类型
-    public enum UpdateWithOut {
-        tip_without,
-        tip_toast,
-        tip_dialog
-    }
-
-    //下载更新类型
-    public enum DownType {
-        down_auto_Install,
-        down_click_Install
-    }
 
     //获取单例对象
     public static UpdateHelper getInstance() {
@@ -115,41 +90,6 @@ public class UpdateHelper {
         return this;
     }
 
-    public UpdateHelper setCheckType(CheckType checkType) {
-        this.checkType = checkType;
-        return this;
-    }
-
-    public UpdateHelper setUpdateWithOut(UpdateWithOut updateWithOut) {
-        this.updateWithOut = updateWithOut;
-        return this;
-    }
-
-    public UpdateHelper setDownType(DownType downType) {
-        this.downType = downType;
-        return this;
-    }
-
-    public UpdateHelper showProgressDialog(boolean showProgressDialog) {
-        this.showProgressDialog = showProgressDialog;
-        return this;
-    }
-
-
-    public Context getContext() {
-        if (mContext == null) {
-            throw new RuntimeException("should call UpdateHelper.init first");
-        }
-        return mContext;
-    }
-
-    public CheckType getCheckType() {
-        return checkType;
-    }
-
-    public DownType getDownType() {
-        return downType;
-    }
 
     public String getUrl() {
         if (TextUtils.isEmpty(checkUrl)) {
@@ -181,20 +121,11 @@ public class UpdateHelper {
         return onlyCheck;
     }
 
-    public UpdateWithOut getUpdateWithOut() {
-        return updateWithOut;
-    }
-
-
-    public boolean isShowProgressDialog() {
-        return showProgressDialog;
-    }
-
     public boolean isDownloadCancel() {
         return downloadCancel;
     }
 
-    public void setDownloadCancel(boolean downloadCdownloadCancelancle) {
+    public void setDownloadCancel(boolean downloadCancel) {
         this.downloadCancel = downloadCancel;
     }
 

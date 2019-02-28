@@ -2,22 +2,23 @@ package xyz.yhsj.update.net;
 
 import android.app.Activity;
 import android.app.ActivityManager;
-import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.math.BigDecimal;
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 
@@ -26,21 +27,16 @@ import xyz.yhsj.update.UpdateHelper;
 import xyz.yhsj.update.bean.UpdateEntity;
 import xyz.yhsj.update.listener.NetCallBack;
 import xyz.yhsj.update.service.DownloadService;
+import xyz.yhsj.update.utils.FileUtil;
 
 /**
  * 更新代理
  */
 public class UpdateAgent {
     private static UpdateAgent updater;
-    //检查更新的弹窗
-    private ProgressDialog checkDialog;
-    //下载的进度弹窗
-    private AlertDialog downDialog;
     //下载进度的广播
     private UpdateProgressBroadcastReceiver broadcastReceiver;
-    private ProgressBar progressBar;
-    private TextView progressContent;
-
+    private Activity activity;
 
     public static UpdateAgent getInstance() {
         if (updater == null) {
@@ -56,17 +52,13 @@ public class UpdateAgent {
      * @param activity 上下文
      */
     public void checkUpdate(final Activity activity) {
-        if (UpdateHelper.getInstance().getCheckType() == UpdateHelper.CheckType.check_with_Dialog) {
-            checkDialog = new ProgressDialog(activity);
-            checkDialog = new ProgressDialog(activity);
-            checkDialog.setMessage("正在检查更新...");
-            checkDialog.setCancelable(false);
-            if (!activity.isFinishing()) {
-                checkDialog.show();
-            } else {
-                return;
-            }
-        }
+        this.activity = activity;
+        // 动态注册广播
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(DownloadService.ACTION_BROADCAST);
+        broadcastReceiver = new UpdateProgressBroadcastReceiver();
+        activity.registerReceiver(broadcastReceiver, filter);
+
         //获取appKey
         String appKey = UpdateHelper.getInstance().getAppKey();
         //请求地址
@@ -90,21 +82,8 @@ public class UpdateAgent {
                 new NetCallBack() {
                     @Override
                     public void onSuccess(String result) {
-                        if (checkDialog != null && checkDialog.isShowing()) {
-                            checkDialog.dismiss();
-                        }
                         UpdateEntity updateEntity = UpdateHelper.getInstance().getJsonParser().parse(result);
                         if (updateEntity == null || TextUtils.isEmpty(updateEntity.getUpdateUrl())) {
-                            //是否仅仅检测
-                            if (!UpdateHelper.getInstance().isOnlyCheck()) {
-                                if (UpdateHelper.getInstance().getUpdateWithOut() == UpdateHelper.UpdateWithOut.tip_dialog) {
-                                    showNoUpdateDialog(activity);
-                                } else if (UpdateHelper.getInstance().getUpdateWithOut() == UpdateHelper.UpdateWithOut.tip_toast) {
-                                    Toast.makeText(activity, "已是最新版本", Toast.LENGTH_SHORT).show();
-                                } else if (UpdateHelper.getInstance().getUpdateWithOut() == UpdateHelper.UpdateWithOut.tip_without) {
-
-                                }
-                            }
                             //通知前台更新状态
                             if (UpdateHelper.getInstance().getUpdateListener() != null) {
                                 UpdateHelper.getInstance().getUpdateListener().Update(false, null);
@@ -126,16 +105,7 @@ public class UpdateAgent {
 
                     @Override
                     public void onFail() {
-                        if (checkDialog != null && checkDialog.isShowing()) {
-                            checkDialog.dismiss();
-                        }
-                        if (UpdateHelper.getInstance().getUpdateWithOut() == UpdateHelper.UpdateWithOut.tip_dialog) {
-                            showNoUpdateDialog(activity);
-                        } else if (UpdateHelper.getInstance().getUpdateWithOut() == UpdateHelper.UpdateWithOut.tip_toast) {
-                            Toast.makeText(activity, "已是最新版本", Toast.LENGTH_SHORT).show();
-                        } else if (UpdateHelper.getInstance().getUpdateWithOut() == UpdateHelper.UpdateWithOut.tip_without) {
 
-                        }
                     }
                 });
     }
@@ -143,14 +113,14 @@ public class UpdateAgent {
     /**
      * 信息提示的dialog
      *
-     * @param activity 上下文
+     * @param activity     上下文
      * @param updateEntity 请求参数对象
      */
     private void showAlertDialog(final Activity activity, final UpdateEntity updateEntity) {
         View view = LayoutInflater.from(activity).inflate(R.layout.dialog_result_view, null);
-        TextView content = (TextView) view.findViewById(R.id.content);
-        Button btn_cancel = (Button) view.findViewById(R.id.btn_cancle);
-        Button btn_update = (Button) view.findViewById(R.id.btn_update);
+        TextView content = view.findViewById(R.id.content);
+        Button btn_cancel = view.findViewById(R.id.btn_cancle);
+        Button btn_update = view.findViewById(R.id.btn_update);
         AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         builder.setCancelable(false);
         builder.setView(view);
@@ -171,33 +141,15 @@ public class UpdateAgent {
         });
     }
 
-    /**
-     * 信息提示的dialog
-     *
-     * @param activity 上下文
-     */
-    private void showNoUpdateDialog(final Activity activity) {
-        View view = LayoutInflater.from(activity).inflate(R.layout.dialog_no_update_view, null);
-        Button btn_update = (Button) view.findViewById(R.id.btn_update);
-        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-        builder.setCancelable(false);
-        builder.setView(view);
-        final AlertDialog dialog = builder.show();
-        btn_update.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                dialog.dismiss();
-            }
-        });
-    }
 
     /**
      * 下载APP
      *
-     * @param activity 上下文
+     * @param activity     上下文
      * @param updateEntity 更新对象
      */
     private void downloadApp(Activity activity, UpdateEntity updateEntity) {
+        this.activity = activity;
         //判断服务是否运行，防止重复启动产生错误
         if (!isServiceWork(activity, DownloadService.class.getName())) {
 
@@ -205,61 +157,13 @@ public class UpdateAgent {
             it.putExtra(DownloadService.KEY_APP_NAME, updateEntity.getName());
             it.putExtra(DownloadService.KEY_DOWN_URL, updateEntity.getUpdateUrl());
 
-            //是否自动安装
-            if (UpdateHelper.getInstance().getDownType() == UpdateHelper.DownType.down_auto_Install) {
-                it.putExtra(DownloadService.KEY_AUTO_INSTALL, true);
-            } else {
-                it.putExtra(DownloadService.KEY_AUTO_INSTALL, false);
-            }
-
             activity.startService(it);
-            //判断是否显示进度弹窗
-            if (UpdateHelper.getInstance().isShowProgressDialog()) {
-                downProgressDialog(activity);
-            }
 
         } else {
             Toast.makeText(activity, "正在进行下载任务，请稍后", Toast.LENGTH_SHORT).show();
         }
     }
 
-    /**
-     * 下载时的进度条弹窗
-     *
-     * @param activity 上下文
-     */
-    private void downProgressDialog(final Activity activity) {
-        // 动态注册广播
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(DownloadService.ACTION_BROADCAST);
-        broadcastReceiver = new UpdateProgressBroadcastReceiver();
-        activity.registerReceiver(broadcastReceiver, filter);
-        View view = LayoutInflater.from(activity).inflate(R.layout.dialog_update_progress_view, null);
-        progressContent = (TextView) view.findViewById(R.id.content);
-        Button btnCancel = (Button) view.findViewById(R.id.btn_cancle);
-        progressBar = (ProgressBar) view.findViewById(R.id.progress);
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-        builder.setCancelable(false);
-        builder.setView(view);
-        downDialog = builder.show();
-        downDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
-            @Override
-            public void onDismiss(DialogInterface dialogInterface) {
-                // 注销广播
-                if (broadcastReceiver != null) {
-                    activity.unregisterReceiver(broadcastReceiver);
-                }
-            }
-        });
-        btnCancel.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                downDialog.dismiss();
-                UpdateHelper.getInstance().setDownloadCancel(true);
-            }
-        });
-    }
 
     /**
      * 定义广播接收器（内部类）
@@ -273,35 +177,59 @@ public class UpdateAgent {
 
             int type = intent.getIntExtra(DownloadService.KEY_BROADCAST_TYPE, -1);
 
-            if (type == DownloadService.DOWN_LOADING) {
-
-                if (!downDialog.isShowing()) {
-                    downDialog.show();
-                }
-                //更新弹窗进度
-                progressBar.setMax(intent.getIntExtra(DownloadService.KEY_BROADCAST_TOTAL, 0) / 1000);
-                progressBar.setProgress(intent.getIntExtra(DownloadService.KEY_BROADCAST_COUNT, 0) / 1000);
-                progressContent.setText((formatDouble(intent.getIntExtra(DownloadService.KEY_BROADCAST_COUNT, 0) / 1024.0 / 1024.0)) + "M/" + (formatDouble(intent.getIntExtra(DownloadService.KEY_BROADCAST_TOTAL, 0) / 1024.0 / 1024.0)) + "M");
-            }
-            //关闭弹窗
-            if (type == DownloadService.DOWN_SUCCESS) {
-                if (downDialog != null) {
-                    downDialog.dismiss();
+            //无权限 申请权限
+            if (type == DownloadService.NO_INSTALL_PERMISSION) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    boolean installAllowed = activity.getPackageManager().canRequestPackageInstalls();
+                    if (!installAllowed) {
+                        Uri uri = Uri.parse("package:" + activity.getPackageName());
+                        Intent perIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, uri);
+                        activity.startActivityForResult(perIntent, 777);
+                        return;
+                    }
                 }
             }
-            //关闭弹窗
-            if (type == DownloadService.DOWN_ERROR) {
 
-                if (downDialog != null) {
-                    downDialog.dismiss();
+            if (type == DownloadService.INSTALL) {
+                File apk = FileUtil.updateFile;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    boolean installAllowed = activity.getPackageManager().canRequestPackageInstalls();
+                    if (installAllowed) {
+                        install(apk);
+                    }
+                } else {
+                    install(apk);
                 }
             }
         }
     }
 
-    private BigDecimal formatDouble(double d) {
-        BigDecimal bd = new BigDecimal(d);
-        return bd.setScale(2, BigDecimal.ROUND_HALF_UP);
+
+    /**
+     * 安卓7.0做适配
+     *
+     * @param apkFile
+     */
+    private void install(File apkFile) {
+        //判读版本是否在7.0以上
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            //在AndroidManifest中的android:authorities值
+            Uri apkUri = FileProvider.getUriForFile(activity, activity.getPackageName() + ".fileprovider", apkFile);
+            Intent install = new Intent(Intent.ACTION_VIEW);
+            install.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            install.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            activity.startActivity(install);
+        } else {
+            Intent install = new Intent(Intent.ACTION_VIEW);
+            install.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive");
+            install.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(install);
+        }
+
+        if (broadcastReceiver != null) {
+            activity.unregisterReceiver(broadcastReceiver);
+        }
     }
 
 
