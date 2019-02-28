@@ -90,7 +90,7 @@ UpdateHelper.init(this);
     }
 ```
 适配8.0的时候在哪里启动就要在哪里添加
-```
+``` 
 @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
