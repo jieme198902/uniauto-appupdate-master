@@ -89,3 +89,15 @@ UpdateHelper.init(this);
                 .check(this);
     }
 ```
+适配8.0的时候在哪里启动就要在哪里添加
+```
+@Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        //这里是请求安装未知来源apk，startActivityForResult(intent,777);
+        if (resultCode == RESULT_OK && requestCode == 777) {
+            //发送安装apk的通知
+            DownloadService.sendInstallBroadcast(this);
+        }
+    }
+```
