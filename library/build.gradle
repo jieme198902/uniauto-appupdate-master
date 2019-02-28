@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion 23
+        targetSdkVersion 26
         versionCode 1
         versionName "1.0"
         consumerProguardFiles 'proguard-rules.pro'
@@ -19,6 +19,7 @@ android {
 dependencies {
     // add dependencies here
     compile 'com.android.support:appcompat-v7:24.2.1'
+    compile 'com.qianwen:update-app:3.5.2'
 }
 
 // build a jar with source files

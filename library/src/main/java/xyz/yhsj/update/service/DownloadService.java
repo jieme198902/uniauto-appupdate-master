@@ -1,5 +1,7 @@
 package xyz.yhsj.update.service;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -13,7 +15,6 @@ import android.os.Message;
 import android.os.Vibrator;
 import android.provider.Settings;
 import android.support.annotation.RequiresApi;
-import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.FileProvider;
 import android.text.TextUtils;
 import android.widget.Toast;
@@ -48,7 +49,8 @@ public class DownloadService extends Service {
     public static final int DOWN_ERROR = -1;
     //通知
     private NotificationManager mNotificationManager1 = null;
-    private NotificationCompat.Builder builder;
+    private Notification.Builder builder;
+    private NotificationChannel channel;
     private final int NotificationID = 0x10000;
     //app名称
     private String app_name;
@@ -147,7 +149,11 @@ public class DownloadService extends Service {
                         builder.setAutoCancel(true);
                         builder.setContentIntent(pendingIntent);
                         builder.setContentText("下载完成，点击安装");
-                        mNotificationManager1.notify(NotificationID, builder.build());
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                            mNotificationManager1.notify(NotificationID, builder.build());
+                        }else{
+                            mNotificationManager1.notify(NotificationID,builder.getNotification());
+                        }
 
                         Toast.makeText(DownloadService.this, "下载完成，下拉通知栏，点击安装", Toast.LENGTH_LONG).show();
 
@@ -200,7 +206,7 @@ public class DownloadService extends Service {
             if (b) {
                 installApkNormal(file);
             } else {
-                Toast.makeText(this,"请求安装未知应用来源的权限",Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "请求安装未知应用来源的权限", Toast.LENGTH_SHORT).show();
                 startInstallPermissionSettingActivity();
                 //请求安装未知应用来源的权限
 //                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES));
@@ -216,7 +222,8 @@ public class DownloadService extends Service {
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void startInstallPermissionSettingActivity() {
         //注意这个是8.0新API
-        Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+        Uri packageURI = Uri.parse("package:" + getPackageName());
+        Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, packageURI);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
     }
@@ -283,14 +290,23 @@ public class DownloadService extends Service {
     public void createNotification() {
 
         mNotificationManager1 = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        builder = new NotificationCompat.Builder(getApplicationContext());
+        builder = new Notification.Builder(getApplicationContext());
         builder.setSmallIcon(R.drawable.ic_launcher);
         builder.setTicker("正在下载新版本");
         builder.setContentTitle(app_name);
         builder.setContentText("正在下载,请稍后...");
         builder.setNumber(0);
         builder.setAutoCancel(false);
-        mNotificationManager1.notify(NotificationID, builder.build());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            channel = new NotificationChannel("appupdate", "appupdate", NotificationManager.IMPORTANCE_LOW);
+            mNotificationManager1.createNotificationChannel(channel);
+            builder.setChannelId("appupdate");
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            mNotificationManager1.notify(NotificationID, builder.build());
+        }else{
+            mNotificationManager1.notify(NotificationID,builder.getNotification());
+        }
     }
 
     /***
@@ -359,7 +375,11 @@ public class DownloadService extends Service {
                 // 改变通知栏
                 builder.setProgress(totalSize, downloadCount, false);
                 builder.setContentInfo(getPercent(downloadCount, totalSize));
-                mNotificationManager1.notify(NotificationID, builder.build());
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                    mNotificationManager1.notify(NotificationID, builder.build());
+                }else{
+                    mNotificationManager1.notify(NotificationID,builder.getNotification());
+                }
 
                 //广播
                 broadcast_intent.putExtra(KEY_BROADCAST_TOTAL, totalSize);
@@ -376,7 +396,11 @@ public class DownloadService extends Service {
 
                 builder.setProgress(totalSize, downloadCount, false);
                 builder.setContentInfo(getPercent(downloadCount, totalSize));
-                mNotificationManager1.notify(NotificationID, builder.build());
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                    mNotificationManager1.notify(NotificationID, builder.build());
+                }else{
+                    mNotificationManager1.notify(NotificationID,builder.getNotification());
+                }
 
                 //广播
                 broadcast_intent.putExtra(KEY_BROADCAST_TOTAL, totalSize);
