@@ -28,6 +28,7 @@ import xyz.yhsj.update.bean.UpdateEntity;
 import xyz.yhsj.update.listener.NetCallBack;
 import xyz.yhsj.update.service.DownloadService;
 import xyz.yhsj.update.utils.FileUtil;
+import xyz.yhsj.update.utils.ManifestUtils;
 
 /**
  * 更新代理
@@ -176,6 +177,11 @@ public class UpdateAgent {
         public void onReceive(Context context, Intent intent) {
 
             int type = intent.getIntExtra(DownloadService.KEY_BROADCAST_TYPE, -1);
+            String package_name = intent.getStringExtra(DownloadService.KEY_BROADCAST_PACKAGE_NAME);
+
+            if (!ManifestUtils.getPackName(context).equals(package_name)) {
+                return;
+            }
 
             //无权限 申请权限
             if (type == DownloadService.NO_INSTALL_PERMISSION) {

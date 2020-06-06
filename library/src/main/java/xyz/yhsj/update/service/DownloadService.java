@@ -25,6 +25,7 @@ import java.text.DecimalFormat;
 import xyz.yhsj.update.R;
 import xyz.yhsj.update.UpdateHelper;
 import xyz.yhsj.update.utils.FileUtil;
+import xyz.yhsj.update.utils.ManifestUtils;
 
 /***
  * 升级服务
@@ -41,6 +42,8 @@ public class DownloadService extends Service {
     //handler状态
     public static final int DOWN_SUCCESS = 0;
     public static final int DOWN_ERROR = -1;
+    //广播-下载进度
+    public static final int DOWNLOAD_PROGRESS = 1;
     //广播-发送没有安装权限的代码
     public static final int NO_INSTALL_PERMISSION = 2;
     //广播-安装应用
@@ -68,6 +71,8 @@ public class DownloadService extends Service {
     private final Intent broadcast_intent = new Intent(ACTION_BROADCAST);
     //消息类型
     public static final String KEY_BROADCAST_TYPE = "Key_Broadcast_Type";
+    //包名
+    public static final String KEY_BROADCAST_PACKAGE_NAME = "Key_Broadcast_Package_Name";
 
 
     @Override
@@ -123,6 +128,7 @@ public class DownloadService extends Service {
                         } else {
                             //广播申请权限
                             broadcast_intent.putExtra(KEY_BROADCAST_TYPE, NO_INSTALL_PERMISSION);
+                            broadcast_intent.putExtra(KEY_BROADCAST_PACKAGE_NAME, ManifestUtils.getPackName(DownloadService.this));
                             sendBroadcast(broadcast_intent);
                         }
                     } else {
@@ -133,6 +139,7 @@ public class DownloadService extends Service {
                 case DOWN_ERROR:
                     //广播
                     broadcast_intent.putExtra(KEY_BROADCAST_TYPE, DOWN_ERROR);
+                    broadcast_intent.putExtra(KEY_BROADCAST_PACKAGE_NAME, ManifestUtils.getPackName(DownloadService.this));
                     sendBroadcast(broadcast_intent);
                     builder.setAutoCancel(true);
                     Toast.makeText(DownloadService.this, "下载停止", Toast.LENGTH_SHORT).show();
@@ -155,6 +162,7 @@ public class DownloadService extends Service {
     public static void sendInstallBroadcast(Context context) {
         Intent broadcast_intent = new Intent(ACTION_BROADCAST);
         broadcast_intent.putExtra(KEY_BROADCAST_TYPE, INSTALL);
+        broadcast_intent.putExtra(KEY_BROADCAST_PACKAGE_NAME, ManifestUtils.getPackName(context));
         context.sendBroadcast(broadcast_intent);
     }
 
@@ -306,6 +314,25 @@ public class DownloadService extends Service {
         // 百分比格式，后面不足2位的用0补齐 ##.00%
         DecimalFormat df1 = new DecimalFormat("0.0%");
         result = df1.format(tempresult);
+        sendProgressBroadcast(result);
         return result;
+    }
+
+    /**
+     * @param result 当前百分比
+     * @Description 发送下载进度广播
+     */
+    private void sendProgressBroadcast(String result) {
+        int progress = 0;
+        try {
+            progress = Integer.parseInt(result.split("\\.")[0]);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            broadcast_intent.putExtra(KEY_BROADCAST_TYPE, DOWNLOAD_PROGRESS);
+            broadcast_intent.putExtra(KEY_BROADCAST_PACKAGE_NAME, ManifestUtils.getPackName(DownloadService.this));
+            broadcast_intent.putExtra(String.valueOf(DOWNLOAD_PROGRESS), progress);
+            sendBroadcast(broadcast_intent);
+        }
     }
 }
